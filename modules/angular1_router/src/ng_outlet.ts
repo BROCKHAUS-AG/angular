@@ -118,14 +118,18 @@ function ngOutletDirective($animate, $q: ng.IQService, $rootRouter) {
         newScope.$$router = this.controller.$$router;
         this.deferredActivation = $q.defer();
 
-        let clone = $transclude(newScope, clone => {
+        let clone = $transclude(newScope, clone => {});
+
+        return this.deferredActivation.promise.then(() => {
           $animate.enter(clone, null, this.currentElement || element);
           this.cleanupLastView();
-        });
 
-        this.currentElement = clone;
-        this.currentScope = newScope;
-        return this.deferredActivation.promise;
+          this.currentElement = clone;
+          this.currentScope = newScope;
+        }, () => {
+          newScope.$destroy();
+          return $q.reject();
+        });
       }
     }
 
@@ -162,13 +166,17 @@ function routerTriggerDirective($q) {
     link: function(scope, element, attr, ngOutletCtrl) {
       var promise = $q.when();
       var outlet = ngOutletCtrl.$$outlet;
+      var previousController = outlet.currentController;
       var currentComponent = outlet.currentController =
           element.controller(ngOutletCtrl.$$componentName);
       if (currentComponent.$routerOnActivate) {
         promise = $q.when(currentComponent.$routerOnActivate(outlet.currentInstruction,
                                                              outlet.previousInstruction));
       }
-      promise.then(outlet.deferredActivation.resolve, outlet.deferredActivation.reject);
+      promise.then(outlet.deferredActivation.resolve, () => {
+        outlet.currentController = previousController;
+        return outlet.deferredActivation.reject();
+      });
     }
   };
 }

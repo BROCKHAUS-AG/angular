@@ -265,7 +265,6 @@ export class Router {
   private _afterPromiseFinishNavigating(promise: Promise<any>): Promise<any> {
     return PromiseWrapper.catchError(promise.then((_) => this._finishNavigating()), (err) => {
       this._finishNavigating();
-      throw err;
     });
   }
 
